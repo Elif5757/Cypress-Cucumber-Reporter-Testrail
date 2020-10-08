@@ -1,5 +1,5 @@
 {
-  "name": "mocha-testrail-reporter",
+  "name": "Cypress-Cucumber-Report-Testrail",
   "version": "1.0.12",
   "description": "A Testrail reporter for mocha including TestRail API basic library",
   "main": "index.js",
@@ -9,19 +9,8 @@
     "testrail",
     "reporter"
   ],
-  "author": {
-    "name": "Pierre Awaragi",
-    "email": "pierre@awaragi.com"
-  },
   "license": "MIT",
   "readmeFilename": "README.md",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/awaragi/mocha-testrail-reporter.git"
-  },
-  "bugs": {
-    "url": "https://github.com/awaragi/mocha-testrail-reporter/issues"
-  },
   "scripts": {
     "tsc": "tsc",
     "clean": "rimraf dist",
@@ -30,7 +19,11 @@
   },
   "dependencies": {
     "btoa": "^1.1.2",
-    "unirest": "^0.5.1"
+    "unirest": "^0.5.1",
+    "axios": "^0.18.1",
+    "chalk": "^2.4.1",
+    "mocha": "^2.2.5",
+    "moment": "^2.22.1"
   },
   "peerDependencies": {
     "mocha": "^3 || ^2.2.5"
