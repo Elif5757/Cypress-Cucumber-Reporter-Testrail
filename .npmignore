@@ -1,6 +1,5 @@
 *.iml
 .idea/
-tsconfig.json
 src/
 dist/test
 *.map
