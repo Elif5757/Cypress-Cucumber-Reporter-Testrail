@@ -7,7 +7,6 @@ export interface TestRailOptions {
     assignedToId?: number;
     includeAllInTestRun?: boolean;
     groupId?: number;
-    filter?: string;
 }
 
 export enum Status {
