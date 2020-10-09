@@ -1,11 +1,11 @@
+import {SectionContent} from './section-content.interface';
+import {Section} from './section.interface';
 import {SuiteContent} from './suite-content.interface';
+import {TestCase} from './test-case.interface';
+import {TestRailOptions, TestRailResult} from './testrail.interface';
 
 const axios = require('axios');
 const chalk = require('chalk');
-import {TestRailOptions, TestRailResult} from './testrail.interface';
-import {TestCase} from './test-case.interface';
-import {Section} from './section.interface';
-import {SectionContent} from './section-content.interface';
 
 export class TestRail {
     private base: String;
@@ -55,7 +55,6 @@ export class TestRail {
                 name,
                 description,
                 include_all: this.includeAll
-                //cadeID?
             }),
         })
             .then(response => {
@@ -85,7 +84,7 @@ export class TestRail {
                 username: this.options.username,
                 password: this.options.password,
             },
-            data: JSON.stringify({ results }),
+            data: JSON.stringify({results}),
         })
             .then(response => {
                 console.log('\n', chalk.magenta.underline.bold('(TestRail Reporter)'));
@@ -114,8 +113,10 @@ export class TestRail {
             .catch(error => console.error(error));
     }
 
-    async getSuiteContent(projectId: number, suiteid: number): Promise<SuiteContent> {
-        const casesPromise: Promise<TestCase[]> = axios({
+    public async getSuiteContent(projectId: number, suiteId: number): Promise<SuiteContent> {
+        // für die axios-Aufrufe sollte eine Hilfsmethode geschrieben werden,
+        // damit man nicht jedes Mal die Auth-Daten und den Content-Type-Header übergeben muss.
+        const testCasesPromise: Promise<TestCase[]> = axios({
             method: 'get',
             url: `${this.base}/get_cases/${this.options.projectId}`,
             headers: {'Content-Type': 'application/json'},
@@ -126,70 +127,79 @@ export class TestRail {
             params: {
                 suite_id: this.options.suiteId,
             }
-        })
-            .then(response => response.data.map(item => item));
+        }).then(response => response.data);
         const sectionsPromise: Promise<Section[]> = axios({
             method: 'get',
-            url: `${this.base}/get_sections/project_id=${projectId}&suite_id=${suiteid}`,
+            url: `${this.base}/get_sections/${projectId}`,
             headers: {'Content-Type': 'application/json'},
             auth: {
                 username: this.options.username,
                 password: this.options.password
+            },
+            params: {
+                suite_id: suiteId,
             }
-        })
-            .then(response => response.data.map(item => item));
+        }).then(response => response.data);
 
-        const cases = await casesPromise;
+        const testCases = await testCasesPromise;
         const sections = await sectionsPromise;
 
-        return this.buildSuiteContent(cases, sections);
+        return TestRail.buildSuiteContent(sections, testCases);
     }
 
-    private buildSuiteContent(cases: TestCase[], sections: Section[]): SuiteContent {
-        // const sArray = [
-        //     {
-        //         id: 123,
-        //         name: 'sectionname',
-        //         parent: null,
-        //     },
-        //     {
-        //         id: 4545,
-        //         name: 'asfdasfdsf',
-        //         parent: 123
-        //     }
-        // ]
-        // const sbid = {
-        //     123: {
-        //         id: 123,
-        //         name: 'sectionname',
-        //         parent: null,
-        //     },
-        //     4545: {
-        //         id: 4545,
-        //         name: 'asfdasfdsf',
-        //         parent: 123
-        //     }
-        // }
-        const result: SuiteContent = {
+    public static buildSuiteContent(sections: Section[], testCases: TestCase[]): SuiteContent {
+        // 2. SuiteContent-Objekt aufbauen
+        const suiteContent: SuiteContent = {
             sections: [],
             testCases: []
-        }
-        const sectionsById: {[id: number]: Section} = {};
+        };
+        // 2.1. Für das spätere Hinzufügen der Testfälle wird hier zusätzlich
+        //      zur schnellen Suche der Sections eine Lookup-Table aufgebaut
+        const sectionContentMap: { [id: number]: SectionContent } = {};
+
+        // 2.2. Das Sections-Array wird durchlaufen. Für jede Section wird anhand der Parent-IDs
+        //      der Pfad von der aktuellen Section bis zur Suite-Ebene ermittelt.
+        //      Anschließend werden alle Pfad-Elemente dem `suiteContent` hinzugefügt.
+        //      Zusätzlich wird noch die Map aus 2.1 befüllt.
         sections.forEach((section) => {
-            sectionsById[section.id] = section;
+            const sectionPath = TestRail.getSectionPath(sections, section.id);
+            let resultSections = suiteContent.sections;
+            sectionPath.forEach((sectionPathItem) => {
+                let resultSectionItem = resultSections.find((s) => s.id === sectionPathItem.id);
+                if (!resultSectionItem) {
+                    resultSectionItem = {
+                        id: sectionPathItem.id,
+                        name: sectionPathItem.name,
+                        sections: [],
+                        testCases: []
+                    };
+                    sectionContentMap[resultSectionItem.id] = resultSectionItem;
+                    resultSections.push(resultSectionItem);
+                }
+                resultSections = resultSectionItem.sections;
+            });
         });
-        sections.forEach((section) => {
-            if (section.parent_id) {
 
-            }
-        })
-        cases.forEach((testCase) => {
-            if (testCase.section_id) {
+        // 3. Bislang enthält `suiteContent` nur SectionContents.
+        //    Diese werden jetzt mit den Testfällen angereichert.
+        testCases.forEach((testCase) => {
+            (testCase.section_id ? sectionContentMap[testCase.section_id] : suiteContent).testCases.push(testCase);
+        });
 
-            } else {
-                result.testCases.push(testCase);
+        return suiteContent;
+    }
+
+    private static getSectionPath(sections: Section[], sectionId: number): Section[] {
+        const result: Section[] = [];
+        while (sectionId) {
+            const section = sections.find((section) => section.id === sectionId);
+            if (!section) {
+                throw `Fehler beim Auflösen des Section-Paths: SectionId ${sectionId} existiert nicht`
             }
-        })
+            result.unshift(section);
+            sectionId = section.parent_id;
+        }
         return result;
     }
+
 }
