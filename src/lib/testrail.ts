@@ -20,15 +20,21 @@ export class TestRail {
         this.base = `https://${options.domain}/index.php?/api/v2`;
     }
 
-    public getCases() {
-        return axios({
-            method: 'get',
-            url: `${this.base}/get_cases/${this.options.projectId}`,
+    private gitHubAcc() {
+        return  {
             headers: {'Content-Type': 'application/json'},
             auth: {
                 username: this.options.username,
                 password: this.options.password
-            },
+            }
+        }
+    }
+
+    public getCases() {
+        return axios({
+            method: 'get',
+            url: `${this.base}/get_cases/${this.options.projectId}`,
+            ...this.gitHubAcc(),
             params: {
                 suite_id: this.options.suiteId,
             }
@@ -45,11 +51,7 @@ export class TestRail {
         axios({
             method: 'post',
             url: `${this.base}/add_run/${this.options.projectId}`,
-            headers: {'Content-Type': 'application/json'},
-            auth: {
-                username: this.options.username,
-                password: this.options.password,
-            },
+            ...this.gitHubAcc(),
             data: JSON.stringify({
                 suite_id: this.options.suiteId,
                 name,
@@ -67,11 +69,7 @@ export class TestRail {
         axios({
             method: 'post',
             url: `${this.base}/delete_run/${this.runId}`,
-            headers: {'Content-Type': 'application/json'},
-            auth: {
-                username: this.options.username,
-                password: this.options.password,
-            },
+            ...this.gitHubAcc(),
         }).catch(error => console.error(error));
     }
 
@@ -79,11 +77,7 @@ export class TestRail {
         return axios({
             method: 'post',
             url: `${this.base}/add_result/${this.test_id}`,
-            headers: {'Content-Type': 'application/json'},
-            auth: {
-                username: this.options.username,
-                password: this.options.password,
-            },
+            ...this.gitHubAcc(),
             data: JSON.stringify({results}),
         })
             .then(response => {
@@ -103,11 +97,7 @@ export class TestRail {
         axios({
             method: 'post',
             url: `${this.base}/close_run/${this.runId}`,
-            headers: {'Content-Type': 'application/json'},
-            auth: {
-                username: this.options.username,
-                password: this.options.password,
-            },
+            ...this.gitHubAcc(),
         })
             .then(() => console.log('- Test run closed successfully'))
             .catch(error => console.error(error));
@@ -119,11 +109,7 @@ export class TestRail {
         const testCasesPromise: Promise<TestCase[]> = axios({
             method: 'get',
             url: `${this.base}/get_cases/${this.options.projectId}`,
-            headers: {'Content-Type': 'application/json'},
-            auth: {
-                username: this.options.username,
-                password: this.options.password
-            },
+            ...this.gitHubAcc(),
             params: {
                 suite_id: this.options.suiteId,
             }
@@ -131,11 +117,7 @@ export class TestRail {
         const sectionsPromise: Promise<Section[]> = axios({
             method: 'get',
             url: `${this.base}/get_sections/${projectId}`,
-            headers: {'Content-Type': 'application/json'},
-            auth: {
-                username: this.options.username,
-                password: this.options.password
-            },
+            ...this.gitHubAcc(),
             params: {
                 suite_id: suiteId,
             }
